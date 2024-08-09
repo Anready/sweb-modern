@@ -33,8 +33,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextWatcher;
@@ -75,6 +73,9 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -134,7 +135,7 @@ public class MainActivity extends Activity {
     static final int PERMISSION_REQUEST_IMPORT_BOOKMARKS = 2;
     static final int PERMISSION_REQUEST_DOWNLOAD = 3;
 
-    private ArrayList<Tab> tabs = new ArrayList<>();
+    private final ArrayList<Tab> tabs = new ArrayList<>();
     private int currentTabIndex;
     private FrameLayout webviews;
     private AutoCompleteTextView et;
@@ -177,13 +178,12 @@ public class MainActivity extends Activity {
             return title;
         }
 
-        private String title;
-        private int icon;
-        private Runnable action;
-        private MyBooleanSupplier getState;
+        private final String title;
+        private final int icon;
+        private final Runnable action;
+        private final MyBooleanSupplier getState;
     }
 
-    @SuppressWarnings("unchecked")
     final MenuAction[] menuActions = new MenuAction[]{
             new MenuAction("Desktop UA", R.drawable.ua, this::toggleDesktopUA, () -> getCurrentTab().isDesktopUA),
             new MenuAction("3rd party cookies", R.drawable.cookies_3rdparty, this::toggleThirdPartyCookies,
@@ -260,7 +260,7 @@ public class MainActivity extends Activity {
         Bundle bundle;
     }
 
-    private ArrayList<TitleAndBundle> closedTabs = new ArrayList<>();
+    private final ArrayList<TitleAndBundle> closedTabs = new ArrayList<>();
 
     private Tab getCurrentTab() {
         return tabs.get(currentTabIndex);
@@ -284,7 +284,7 @@ public class MainActivity extends Activity {
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setJavaScriptEnabled(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setAppCacheEnabled(true);
+        settings.setDatabaseEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
@@ -679,7 +679,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-            private Thread.UncaughtExceptionHandler defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
+            private final Thread.UncaughtExceptionHandler defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
             @Override
             public void uncaughtException(Thread t, Throwable e) {
                 ExceptionLogger.logException(e);
@@ -969,16 +969,43 @@ public class MainActivity extends Activity {
                 .setOnDismissListener(dlg -> cursor.close())
                 .setCursor(cursor, (dlg, which) -> {
                             cursor.moveToPosition(which);
-                            String url = cursor.getString(cursor.getColumnIndex("url"));
-                            et.setText(url);
-                            loadUrl(url, getCurrentWebView());
+                            int i = cursor.getColumnIndex("url");
+                            if (i != -1) {
+                                String url = cursor.getString(i);
+                                et.setText(url);
+                                loadUrl(url, getCurrentWebView());
+                            }
                         }, "title")
                 .create();
         dialog.getListView().setOnItemLongClickListener((parent, view, position, id) -> {
             cursor.moveToPosition(position);
-            int rowid = cursor.getInt(cursor.getColumnIndex("_id"));
-            String title = cursor.getString(cursor.getColumnIndex("title"));
-            String url = cursor.getString(cursor.getColumnIndex("url"));
+
+            int rowidIndex = cursor.getColumnIndex("_id");
+            int titleIndex = cursor.getColumnIndex("title");
+            int urlIndex = cursor.getColumnIndex("url");
+
+            int rowid;
+            String title;
+            String url;
+
+            if (rowidIndex != -1) {
+                rowid = cursor.getInt(rowidIndex);
+            } else {
+                rowid = -1;
+            }
+
+            if (titleIndex != -1) {
+                title = cursor.getString(titleIndex);
+            } else {
+                title = null;
+            }
+
+            if (urlIndex != -1) {
+                url = cursor.getString(urlIndex);
+            } else {
+                url = null;
+            }
+
             dialog.dismiss();
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle(title)
@@ -1568,7 +1595,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private class MyGestureDetector extends GestureDetector.SimpleOnGestureListener {
+    private static class MyGestureDetector extends GestureDetector.SimpleOnGestureListener {
         private static final double FORBIDDEN_ZONE_MIN = Math.PI / 4 - Math.PI / 12;
         private static final double FORBIDDEN_ZONE_MAX = Math.PI / 4 + Math.PI / 12;
         private static final int MIN_VELOCITY_DP = 80;  // 0.5 inch/sec
@@ -1753,12 +1780,7 @@ public class MainActivity extends Activity {
                 return false;
             });
             //noinspection AndroidLintClickableViewAccessibility
-            parent.setOnTouchListener((dropdown, event) -> {
-                if (event.getX() > dropdown.getWidth() - size * 2) {
-                    return true;
-                }
-                return false;
-            });
+            parent.setOnTouchListener((dropdown, event) -> event.getX() > dropdown.getWidth() - size * 2);
             return convertView;
         }
 
