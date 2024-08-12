@@ -10,4 +10,5 @@
     <color name="colorOnBackground">#000000</color>
     <color name="colorSurface">#FFFFFF</color>
     <color name="colorOnSurface">#000000</color>
+    <color name="black">#000000</color>
 </resources>

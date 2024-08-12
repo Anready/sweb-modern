@@ -63,7 +63,6 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.Filter;
@@ -102,16 +101,20 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import landau.sweb.incognito.IncognitoAppCompatAutoCompleteTextView;
+import landau.sweb.incognito.IncognitoWebView;
+import landau.sweb.utils.AdblockRulesLoader;
 import landau.sweb.utils.ExceptionLogger;
+import landau.sweb.utils.PlacesDbHelper;
 
 public class MainActivity extends Activity {
 
     private static class Tab {
-        Tab(WebView w) {
+        Tab(IncognitoWebView w) {
             this.webview = w;
         }
 
-        WebView webview;
+        IncognitoWebView webview;
         boolean isDesktopUA;
     }
 
@@ -138,7 +141,7 @@ public class MainActivity extends Activity {
     private final ArrayList<Tab> tabs = new ArrayList<>();
     private int currentTabIndex;
     private FrameLayout webviews;
-    private AutoCompleteTextView et;
+    private IncognitoAppCompatAutoCompleteTextView et;
     private boolean isNightMode;
     private boolean isFullscreen;
     private SharedPreferences prefs;
@@ -184,51 +187,7 @@ public class MainActivity extends Activity {
         private final MyBooleanSupplier getState;
     }
 
-    final MenuAction[] menuActions = new MenuAction[]{
-            new MenuAction("Desktop UA", R.drawable.ua, this::toggleDesktopUA, () -> getCurrentTab().isDesktopUA),
-            new MenuAction("3rd party cookies", R.drawable.cookies_3rdparty, this::toggleThirdPartyCookies,
-                    () -> CookieManager.getInstance().acceptThirdPartyCookies(getCurrentWebView())),
-            new MenuAction("Ad Blocker", R.drawable.adblocker, this::toggleAdblocker, () -> useAdBlocker),
-            new MenuAction("Update adblock rules", 0, this::updateAdblockRules),
-            new MenuAction("Night mode", R.drawable.night, this::toggleNightMode, () -> isNightMode),
-            new MenuAction("Show address bar", R.drawable.url_bar, this::toggleShowAddressBar, () -> et.getVisibility() == View.VISIBLE),
-            new MenuAction("Full screen", R.drawable.fullscreen, this::toggleFullscreen, () -> isFullscreen),
-            new MenuAction("Tab history", R.drawable.left_right, this::showTabHistory),
-            new MenuAction("Log requests", R.drawable.log_requests, this::toggleLogRequests, () -> isLogRequests),
-            new MenuAction("Find on page", R.drawable.find_on_page, this::findOnPage),
-            new MenuAction("Page info", R.drawable.page_info, this::pageInfo),
-            new MenuAction("Share URL", android.R.drawable.ic_menu_share, this::shareUrl),
-            new MenuAction("Open URL in app", android.R.drawable.ic_menu_view, this::openUrlInApp),
-
-            new MenuAction("Back", R.drawable.back,
-                    () -> {if (getCurrentWebView().canGoBack()) getCurrentWebView().goBack();}),
-            new MenuAction("Forward", R.drawable.forward,
-                    () -> {if (getCurrentWebView().canGoForward()) getCurrentWebView().goForward();}),
-            new MenuAction("Reload", R.drawable.reload, () -> getCurrentWebView().reload()),
-            new MenuAction("Stop", R.drawable.stop, () -> getCurrentWebView().stopLoading()),
-            new MenuAction("Scroll to top", R.drawable.top,
-                    () -> getCurrentWebView().pageUp(true)),
-            new MenuAction("Scroll to bottom", R.drawable.bottom,
-                    () -> getCurrentWebView().pageDown(true)),
-
-            new MenuAction("Menu", R.drawable.menu, this::showMenu),
-            new MenuAction("Full menu", R.drawable.menu, this::showFullMenu),
-
-            new MenuAction("Bookmarks", R.drawable.bookmarks, this::showBookmarks),
-            new MenuAction("Add bookmark", R.drawable.bookmark_add, this::addBookmark),
-            new MenuAction("Export bookmarks", R.drawable.bookmarks_export, this::exportBookmarks),
-            new MenuAction("Import bookmarks", R.drawable.bookmarks_import, this::importBookmarks),
-            new MenuAction("Delete all bookmarks", 0, this::deleteAllBookmarks),
-
-            new MenuAction("Clear history and cache", 0, this::clearHistoryCache),
-
-            new MenuAction("Show tabs", R.drawable.tabs, this::showOpenTabs),
-            new MenuAction("New tab", R.drawable.tab_new, () -> {
-                newTab("");
-                switchToTab(tabs.size() - 1);
-            }),
-            new MenuAction("Close tab", R.drawable.tab_close, this::closeCurrentTab),
-    };
+    MenuAction[] menuActions;
 
     final String[][] toolbarActions = {
             {"Back", "Scroll to top", "Tab history"},
@@ -266,15 +225,15 @@ public class MainActivity extends Activity {
         return tabs.get(currentTabIndex);
     }
 
-    private WebView getCurrentWebView() {
+    private IncognitoWebView getCurrentWebView() {
         return getCurrentTab().webview;
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "DefaultLocale"})
-    private WebView createWebView(Bundle bundle) {
+    private IncognitoWebView createWebView(Bundle bundle) {
         final ProgressBar progressBar = findViewById(R.id.progressbar);
 
-        WebView webview = new WebView(this);
+        IncognitoWebView webview = new IncognitoWebView(this);
         if (bundle != null) {
             webview.restoreState(bundle);
         }
@@ -457,20 +416,20 @@ public class MainActivity extends Activity {
         });
         webview.setOnLongClickListener(v -> {
             String url = null, imageUrl = null;
-            WebView.HitTestResult r = ((WebView) v).getHitTestResult();
+            IncognitoWebView.HitTestResult r = ((IncognitoWebView) v).getHitTestResult();
             switch (r.getType()) {
-                case WebView.HitTestResult.SRC_ANCHOR_TYPE:
+                case IncognitoWebView.HitTestResult.SRC_ANCHOR_TYPE:
                     url = r.getExtra();
                     break;
-                case WebView.HitTestResult.IMAGE_TYPE:
+                case IncognitoWebView.HitTestResult.IMAGE_TYPE:
                     imageUrl = r.getExtra();
                     break;
-                case WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE:
-                case WebView.HitTestResult.EMAIL_TYPE:
-                case WebView.HitTestResult.UNKNOWN_TYPE:
+                case IncognitoWebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE:
+                case IncognitoWebView.HitTestResult.EMAIL_TYPE:
+                case IncognitoWebView.HitTestResult.UNKNOWN_TYPE:
                     Handler handler = new Handler();
                     Message message = handler.obtainMessage();
-                    ((WebView)v).requestFocusNodeHref(message);
+                    ((IncognitoWebView)v).requestFocusNodeHref(message);
                     url = message.getData().getString("url");
                     if ("".equals(url)) {
                         url = null;
@@ -632,7 +591,7 @@ public class MainActivity extends Activity {
         dm.enqueue(request);
     }
 
-    private void newTabCommon(WebView webview) {
+    private void newTabCommon(IncognitoWebView webview) {
         boolean isDesktopUA = !tabs.isEmpty() && getCurrentTab().isDesktopUA;
         webview.getSettings().setUserAgentString(isDesktopUA ? desktopUA : null);
         webview.getSettings().setUseWideViewPort(isDesktopUA);
@@ -646,13 +605,13 @@ public class MainActivity extends Activity {
     }
 
     private void newTab(String url) {
-        WebView webview = createWebView(null);
+        IncognitoWebView webview = createWebView(null);
         newTabCommon(webview);
         loadUrl(url, webview);
     }
 
     private void newTabFromBundle(Bundle bundle) {
-        WebView webview = createWebView(bundle);
+        IncognitoWebView webview = createWebView(bundle);
         newTabCommon(webview);
     }
 
@@ -708,7 +667,7 @@ public class MainActivity extends Activity {
         // setup edit text
         et.setSelected(false);
         String initialUrl = getUrlFromIntent(getIntent());
-        et.setText(initialUrl.isEmpty() ? "about:blank" : initialUrl);
+        et.setText(initialUrl.isEmpty() ? "https://google.com/" : initialUrl);
         et.setAdapter(new SearchAutocompleteAdapter(this, text -> {
             et.setText(text);
             et.setSelection(text.length());
@@ -717,8 +676,6 @@ public class MainActivity extends Activity {
             getCurrentWebView().requestFocus();
             loadUrl(et.getText().toString(), getCurrentWebView());
         });
-
-        setupToolbar(findViewById(R.id.toolbar));
 
         et.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
@@ -806,6 +763,7 @@ public class MainActivity extends Activity {
     }
 
     private void setupToolbar(ViewGroup parent) {
+        parent.removeAllViews();
         for (String[] actions : toolbarActions) {
             View v = getLayoutInflater().inflate(R.layout.toolbar_button, parent, false);
             parent.addView(v);
@@ -1215,7 +1173,7 @@ public class MainActivity extends Activity {
     }
 
     private void clearHistoryCache() {
-        WebView v = getCurrentWebView();
+        IncognitoWebView v = getCurrentWebView();
         v.clearCache(true);
         v.clearFormData();
         v.clearHistory();
@@ -1274,10 +1232,10 @@ public class MainActivity extends Activity {
 
     private void onNightModeChange() {
         if (isNightMode) {
-            int textColor = Color.rgb(0x61, 0x61, 0x5f);
-            int backgroundColor = Color.rgb(0x22, 0x22, 0x22);
+            int textColor = Color.WHITE;
+            int backgroundColor = Color.BLACK;
             et.setTextColor(textColor);
-            et.setBackgroundColor(backgroundColor);
+            //et.setBackgroundColor(backgroundColor);
             searchEdit.setTextColor(textColor);
             searchEdit.setBackgroundColor(backgroundColor);
             searchCount.setTextColor(textColor);
@@ -1288,9 +1246,9 @@ public class MainActivity extends Activity {
             getWindow().setNavigationBarColor(Color.BLACK);
         } else {
             int textColor = Color.BLACK;
-            int backgroundColor = Color.rgb(0xe0, 0xe0, 0xe0);
-            et.setTextColor(textColor);
-            et.setBackgroundColor(backgroundColor);
+            int backgroundColor = Color.WHITE;
+            //et.setTextColor(textColor);
+            //et.setBackgroundColor(backgroundColor);
             searchEdit.setTextColor(textColor);
             searchEdit.setBackgroundColor(backgroundColor);
             searchCount.setTextColor(textColor);
@@ -1299,10 +1257,53 @@ public class MainActivity extends Activity {
             ((ProgressBar) findViewById(R.id.progressbar)).setProgressTintList(ColorStateList.valueOf(Color.rgb(0, 0xcc, 0)));
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         }
-        for (int i = 0; i < tabs.size(); i++) {
-            tabs.get(i).webview.setBackgroundColor(isNightMode ? Color.BLACK : Color.WHITE);
-            injectCSS(tabs.get(i).webview);
-        }
+
+        menuActions = new MenuAction[]{
+                new MenuAction("Desktop UA", isNightMode ? R.drawable.ua_white : R.drawable.ua, this::toggleDesktopUA, () -> getCurrentTab().isDesktopUA),
+                new MenuAction("3rd party cookies", isNightMode ? R.drawable.cookies_3rdparty_white : R.drawable.cookies_3rdparty, this::toggleThirdPartyCookies,
+                        () -> CookieManager.getInstance().acceptThirdPartyCookies(getCurrentWebView())),
+                new MenuAction("Ad Blocker", isNightMode ? R.drawable.adblocker_white : R.drawable.adblocker, this::toggleAdblocker, () -> useAdBlocker),
+                new MenuAction("Update adblock rules", 0, this::updateAdblockRules),
+                new MenuAction("Night mode", isNightMode ? R.drawable.night_white : R.drawable.night, this::toggleNightMode, () -> isNightMode),
+                new MenuAction("Show address bar", isNightMode ? R.drawable.url_bar_white : R.drawable.url_bar, this::toggleShowAddressBar, () -> et.getVisibility() == View.VISIBLE),
+                new MenuAction("Full screen", isNightMode ? R.drawable.fullscreen_white : R.drawable.fullscreen, this::toggleFullscreen, () -> isFullscreen),
+                new MenuAction("Tab history", isNightMode ? R.drawable.left_right_white : R.drawable.left_right, this::showTabHistory),
+                new MenuAction("Log requests", isNightMode ? R.drawable.log_requests_white : R.drawable.log_requests, this::toggleLogRequests, () -> isLogRequests),
+                new MenuAction("Find on page", isNightMode ? R.drawable.find_on_page_white : R.drawable.find_on_page, this::findOnPage),
+                new MenuAction("Page info", isNightMode ? R.drawable.page_info_white : R.drawable.page_info, this::pageInfo),
+                new MenuAction("Share URL", isNightMode ? R.drawable.share_white : R.drawable.share, this::shareUrl),
+                new MenuAction("Open URL in app", isNightMode ? R.drawable.open_in_app_white : R.drawable.open_in_app, this::openUrlInApp),
+
+                new MenuAction("Back", isNightMode ? R.drawable.back_white : R.drawable.back,
+                        () -> {if (getCurrentWebView().canGoBack()) getCurrentWebView().goBack();}),
+                new MenuAction("Forward", isNightMode ? R.drawable.forward_white : R.drawable.forward,
+                        () -> {if (getCurrentWebView().canGoForward()) getCurrentWebView().goForward();}),
+                new MenuAction("Reload", isNightMode ? R.drawable.reload_white : R.drawable.reload, () -> getCurrentWebView().reload()),
+                new MenuAction("Stop", isNightMode ? R.drawable.stop_white : R.drawable.stop, () -> getCurrentWebView().stopLoading()),
+                new MenuAction("Scroll to top", isNightMode ? R.drawable.top_white : R.drawable.top,
+                        () -> getCurrentWebView().pageUp(true)),
+                new MenuAction("Scroll to bottom", isNightMode ? R.drawable.bottom_white : R.drawable.bottom,
+                        () -> getCurrentWebView().pageDown(true)),
+
+                new MenuAction("Menu", isNightMode ? R.drawable.menu_white : R.drawable.menu, this::showMenu),
+                new MenuAction("Full menu",  isNightMode ? R.drawable.menu_white : R.drawable.menu, this::showFullMenu),
+
+                new MenuAction("Bookmarks", isNightMode ? R.drawable.bookmarks_white : R.drawable.bookmarks, this::showBookmarks),
+                new MenuAction("Add bookmark", isNightMode ? R.drawable.add_white : R.drawable.add, this::addBookmark),
+                new MenuAction("Export bookmarks", isNightMode ? R.drawable.bookmarks_export_white : R.drawable.bookmarks_export, this::exportBookmarks),
+                new MenuAction("Import bookmarks", isNightMode ? R.drawable.bookmarks_import_white : R.drawable.bookmarks_import, this::importBookmarks),
+                new MenuAction("Delete all bookmarks", 0, this::deleteAllBookmarks),
+
+                new MenuAction("Clear history and cache", 0, this::clearHistoryCache),
+
+                new MenuAction("Show tabs", isNightMode ? R.drawable.tabs_white : R.drawable.tabs, this::showOpenTabs),
+                new MenuAction("New tab", isNightMode ? R.drawable.add_white : R.drawable.add, () -> {
+                    newTab("");
+                    switchToTab(tabs.size() - 1);
+                }),
+                new MenuAction("Close tab", isNightMode ? R.drawable.close_white : R.drawable.close, this::closeCurrentTab),        };
+
+        setupToolbar(findViewById(R.id.toolbar));
     }
 
     private void toggleDesktopUA() {
@@ -1399,10 +1400,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void loadUrl(String url, WebView webview) {
+    private void loadUrl(String url, IncognitoWebView webview) {
         url = url.trim();
         if (url.isEmpty()) {
-            url = "about:blank";
+            url = "https://google.com/";
         }
         if (url.startsWith("about:") || url.startsWith("javascript:") || url.startsWith("file:") || url.startsWith("data:") ||
                 (url.indexOf(' ') == -1 && Patterns.WEB_URL.matcher(url).matches())) {
@@ -1476,54 +1477,6 @@ public class MainActivity extends Activity {
                     "html img,html svg{opacity:.5!important;border-color:#111!important}\n" +
                     "html ::-webkit-input-placeholder{color:#4e4e4e!important}\n";
 */
-            final String styleElementId = "night_mode_style_4398357";   // should be unique
-            String js;
-            if (isNightMode) {
-                js = "if (document.head) {" +
-                        "if (!window.night_mode_id_list) night_mode_id_list = new Set();" +
-                        "var newset = new Set();" +
-                        "   for (var n of document.querySelectorAll(':not(a)')) { " +
-                        "     if (n.closest('a') != null) continue;" +
-                        "     if (!n.id) n.id = 'night_mode_id_' + (night_mode_id_list.size + newset.size);" +
-                        "     if (!night_mode_id_list.has(n.id)) newset.add(n.id); " +
-                        "   }" +
-                        "for (var item of newset) night_mode_id_list.add(item);" +
-                        "var style = document.getElementById('" + styleElementId + "');" +
-                        "if (!style) {" +
-                        "   style = document.createElement('style');" +
-                        "   style.id = '" + styleElementId + "';" +
-                        "   style.type = 'text/css';" +
-                        "   style.innerHTML = '" + css + "';" +
-                        "   document.head.appendChild(style);" +
-                        "}" +
-                        "   var css2 = ' ';" +
-                        "   for (var nid of newset) css2 += ('#' + nid + '#' + nid + ',');" +
-                        "   css2 += '#nonexistent {background-color: #161a1e !important; color: #61615f !important; border-color: #212a32 !important; background-image:none !important; outline-color: #161a1e !important; z-index: 1 !important}';" +
-                        "   style.innerHTML += css2;" +
-                        "}" +
-                        "var iframes = document.getElementsByTagName('iframe');" +
-                        "for (var i = 0; i < iframes.length; i++) {" +
-                        "   var fr = iframes[i];" +
-                        "   var style = fr.contentWindow.document.createElement('style');" +
-                        "   style.id = '" + styleElementId + "';" +
-                        "   style.type = 'text/css';" +
-                        "   style.innerHTML = '" + css + "';" +
-                        "   fr.contentDocument.head.appendChild(style);" +
-                        "}";
-            } else {
-                js = "if (document.head && document.getElementById('" + styleElementId + "')) {" +
-                        "   var style = document.getElementById('" + styleElementId + "');" +
-                        "   document.head.removeChild(style);" +
-                        "   window.night_mode_id_list = undefined;" +
-                        "}" +
-                        "var iframes = document.getElementsByTagName('iframe');" +
-                        "for (var i = 0; i < iframes.length; i++) {" +
-                        "   var fr = iframes[i];" +
-                        "   var style = fr.contentWindow.document.getElementById('" + styleElementId + "');" +
-                        "   fr.contentDocument.head.removeChild(style);" +
-                        "}";
-            }
-            webview.evaluateJavascript("javascript:(function() {" + js + "})()", null);
             if (!getCurrentTab().isDesktopUA) {
                 webview.evaluateJavascript("javascript:document.querySelector('meta[name=viewport]').content='width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=1';", null);
             }
@@ -1572,21 +1525,27 @@ public class MainActivity extends Activity {
         boolean getAsBoolean();
     }
 
-    private void setToolbarButtonActions(View view, Runnable click, Runnable longClick, Runnable swipeUp) {
+    private void setToolbarButtonActions(View view, Runnable click, Runnable swipeDown, Runnable swipeUp) {
         if (click != null) {
             view.setOnClickListener(v -> click.run());
         }
-        if (longClick != null) {
-            view.setOnLongClickListener(v -> {
-                longClick.run();
-                return true;
-            });
-        }
-        if (swipeUp != null) {
+
+        if (swipeUp != null || swipeDown != null) {
             final GestureDetector gestureDetector = new GestureDetector(this, new MyGestureDetector(this) {
                 @Override
                 boolean onFlingUp() {
-                    swipeUp.run();
+                    if (swipeUp != null) {
+                        swipeUp.run();
+                    }
+                    return true;
+                }
+
+                @Override
+                boolean onFlingDown() {
+                    if (swipeDown != null) {
+                        swipeDown.run();
+                    }
+
                     return true;
                 }
             });
@@ -1602,9 +1561,10 @@ public class MainActivity extends Activity {
         private static final int MIN_DISTANCE_DP = 80;  // 0.5 inch
         private final float MIN_VELOCITY_PX;
         private final float MIN_DISTANCE_PX;
+        private final float density;
 
         MyGestureDetector(Context context) {
-            float density = context.getResources().getDisplayMetrics().density;
+            density = context.getResources().getDisplayMetrics().density;
             MIN_VELOCITY_PX = MIN_VELOCITY_DP * density;
             MIN_DISTANCE_PX = MIN_DISTANCE_DP * density;
         }
@@ -1622,7 +1582,14 @@ public class MainActivity extends Activity {
 
             if (Math.abs(deltaX) < MIN_DISTANCE_PX && Math.abs(deltaY) < MIN_DISTANCE_PX) {
                 // small movement
-                return false;
+
+                if (Math.abs(deltaX) < Math.abs(deltaY) && deltaY > 0) {
+                    if (Math.abs(deltaY) < 35 * density) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
 
             double angle = Math.atan2(Math.abs(deltaY), Math.abs(deltaX));
@@ -1705,8 +1672,7 @@ public class MainActivity extends Activity {
             Drawable left = getContext().getResources().getDrawable(item.icon != 0 ? item.icon : R.drawable.empty, null);
             int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, m);
             left.setBounds(0, 0, size, size);
-            left.setTint(Color.rgb(0x61, 0x61, 0x5f));
-
+            left.setTint(Color.WHITE);
             Drawable right = null;
             if (item.getState != null) {
                 int icon = item.getState.getAsBoolean() ? android.R.drawable.checkbox_on_background :
@@ -1759,24 +1725,32 @@ public class MainActivity extends Activity {
         public View getView(final int position, View convertView, ViewGroup parent) {
             if (convertView == null) {
                 LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                convertView = inflater.inflate(android.R.layout.simple_dropdown_item_1line, parent, false);
+                convertView = inflater.inflate(R.layout.dropdown, parent, false);
             }
-            TextView v = convertView.findViewById(android.R.id.text1);
+
+            TextView v = convertView.findViewById(R.id.text1);
             v.setText(completions.get(position));
+
             Drawable d = mContext.getResources().getDrawable(R.drawable.commit_search, null);
+            Drawable s = mContext.getResources().getDrawable(R.drawable.url_bar_white, null);
+
             int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 32, mContext.getResources().getDisplayMetrics());
             d.setBounds(0, 0, size, size);
-            v.setCompoundDrawables(null, null, d, null);
+            s.setBounds(0, 0, size, size);
+
+            v.setCompoundDrawables(s, null, d, null);
             //noinspection AndroidLintClickableViewAccessibility
             v.setOnTouchListener((v1, event) -> {
                 if (event.getAction() != MotionEvent.ACTION_DOWN) {
                     return false;
                 }
+
                 TextView t = (TextView) v1;
                 if (event.getX() > t.getWidth() - t.getCompoundPaddingRight()) {
                     commitListener.onSearchCommit(getItem(position).toString());
                     return true;
                 }
+
                 return false;
             });
             //noinspection AndroidLintClickableViewAccessibility

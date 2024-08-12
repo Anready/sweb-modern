@@ -1,14 +1,15 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <RelativeLayout
         android:id="@+id/main_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <AutoCompleteTextView
+        <landau.sweb.incognito.IncognitoAppCompatAutoCompleteTextView
             android:id="@+id/et"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -16,6 +17,12 @@
             android:imeActionLabel="Go"
             android:imeOptions="actionGo"
             android:inputType="textUri"
+            android:gravity="center_vertical"
+            android:background="@drawable/borders"
+            android:hint="Search"
+            android:textColorHint="#C8C8C8"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="5dp"
             android:paddingBottom="10dp"
             android:paddingTop="10dp"
             android:paddingLeft="10dp"
@@ -74,7 +81,7 @@
                 android:paddingEnd="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/bottom"
-                android:tint="#61615f" />
+                app:tint="#61615f" />
 
             <ImageView
                 android:id="@+id/searchFindPrev"
@@ -84,7 +91,7 @@
                 android:paddingEnd="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/top"
-                android:tint="#61615f" />
+                app:tint="#61615f" />
 
             <ImageView
                 android:id="@+id/searchClose"
@@ -94,7 +101,7 @@
                 android:paddingEnd="5dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/stop"
-                android:tint="#61615f" />
+                app:tint="#61615f" />
         </LinearLayout>
 
         <LinearLayout
