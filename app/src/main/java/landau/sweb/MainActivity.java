@@ -105,6 +105,7 @@ import landau.sweb.incognito.IncognitoAppCompatAutoCompleteTextView;
 import landau.sweb.incognito.IncognitoWebView;
 import landau.sweb.utils.AdblockRulesLoader;
 import landau.sweb.utils.ExceptionLogger;
+import landau.sweb.utils.PermissionHelper;
 import landau.sweb.utils.PlacesDbHelper;
 
 public class MainActivity extends Activity {
@@ -200,7 +201,7 @@ public class MainActivity extends Activity {
 
     final String[] shortMenu = {
             "Desktop UA", "Log requests", "Find on page", "Page info", "Share URL",
-            "Open URL in app",  "Full menu"
+            "Open URL in app", "Full menu"
     };
 
     MenuAction getAction(String name) {
@@ -429,7 +430,7 @@ public class MainActivity extends Activity {
                 case IncognitoWebView.HitTestResult.UNKNOWN_TYPE:
                     Handler handler = new Handler();
                     Message message = handler.obtainMessage();
-                    ((IncognitoWebView)v).requestFocusNodeHref(message);
+                    ((IncognitoWebView) v).requestFocusNodeHref(message);
                     url = message.getData().getString("url");
                     if ("".equals(url)) {
                         url = null;
@@ -466,11 +467,13 @@ public class MainActivity extends Activity {
                             new AlertDialog.Builder(MainActivity.this)
                                     .setTitle("Open")
                                     .setMessage("Can't open files of this type. Try downloading instead.")
-                                    .setPositiveButton("OK", (dialog1, which1) -> {})
+                                    .setPositiveButton("OK", (dialog1, which1) -> {
+                                    })
                                     .show();
                         }
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> {})
+                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    })
                     .show();
         });
         webview.setFindListener((activeMatchOrdinal, numberOfMatches, isDoneCounting) ->
@@ -522,7 +525,8 @@ public class MainActivity extends Activity {
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Full URL")
                             .setMessage(url)
-                            .setPositiveButton("OK", (dialog1, which1) -> {})
+                            .setPositiveButton("OK", (dialog1, which1) -> {
+                            })
                             .show();
                     break;
                 case 3:
@@ -561,11 +565,10 @@ public class MainActivity extends Activity {
     }
 
     private void startDownload(String url, String filename) {
-        if (!hasOrRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                null,
-                PERMISSION_REQUEST_DOWNLOAD)) {
+        if (!PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
+
         if (filename == null) {
             filename = URLUtil.guessFileName(url, null, null);
         }
@@ -576,7 +579,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Can't Download URL")
                     .setMessage(url)
-                    .setPositiveButton("OK", (dialog1, which1) -> {})
+                    .setPositiveButton("OK", (dialog1, which1) -> {
+                    })
                     .show();
             return;
         }
@@ -639,6 +643,7 @@ public class MainActivity extends Activity {
 
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             private final Thread.UncaughtExceptionHandler defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
+
             @Override
             public void uncaughtException(Thread t, Throwable e) {
                 ExceptionLogger.logException(e);
@@ -690,7 +695,8 @@ public class MainActivity extends Activity {
         searchEdit = findViewById(R.id.searchEdit);
         searchEdit.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -698,7 +704,8 @@ public class MainActivity extends Activity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
         searchCount = findViewById(R.id.searchCount);
         findViewById(R.id.searchFindNext).setOnClickListener(v -> {
@@ -799,7 +806,8 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Page info")
                 .setMessage(s)
-                .setPositiveButton("OK", (dialog, which) -> {})
+                .setPositiveButton("OK", (dialog, which) -> {
+                })
                 .show();
     }
 
@@ -836,7 +844,8 @@ public class MainActivity extends Activity {
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Remove closed tab?")
                             .setMessage(closedTabs.get(position).title)
-                            .setNegativeButton("Cancel", (dlg, which1) -> {})
+                            .setNegativeButton("Cancel", (dlg, which1) -> {
+                            })
                             .setPositiveButton("Remove", (dlg, which1) -> {
                                 closedTabs.remove(position);
                             })
@@ -915,7 +924,8 @@ public class MainActivity extends Activity {
             }
 
             @Override
-            public void onLoaderReset(Loader<Integer> loader) {}
+            public void onLoaderReset(Loader<Integer> loader) {
+            }
         });
     }
 
@@ -926,14 +936,14 @@ public class MainActivity extends Activity {
                 .setTitle("Bookmarks")
                 .setOnDismissListener(dlg -> cursor.close())
                 .setCursor(cursor, (dlg, which) -> {
-                            cursor.moveToPosition(which);
-                            int i = cursor.getColumnIndex("url");
-                            if (i != -1) {
-                                String url = cursor.getString(i);
-                                et.setText(url);
-                                loadUrl(url, getCurrentWebView());
-                            }
-                        }, "title")
+                    cursor.moveToPosition(which);
+                    int i = cursor.getColumnIndex("url");
+                    if (i != -1) {
+                        String url = cursor.getString(i);
+                        et.setText(url);
+                        loadUrl(url, getCurrentWebView());
+                    }
+                }, "title")
                 .create();
         dialog.getListView().setOnItemLongClickListener((parent, view, position, id) -> {
             cursor.moveToPosition(position);
@@ -967,7 +977,7 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle(title)
-                    .setItems(new String[] {"Rename", "Change URL", "Delete"}, (dlg, which) -> {
+                    .setItems(new String[]{"Rename", "Change URL", "Delete"}, (dlg, which) -> {
                         switch (which) {
                             case 0: {
                                 EditText editView = new EditText(this);
@@ -976,7 +986,7 @@ public class MainActivity extends Activity {
                                         .setTitle("Rename bookmark")
                                         .setView(editView)
                                         .setPositiveButton("Rename", (renameDlg, which1) -> {
-                                            placesDb.execSQL("UPDATE bookmarks SET title=? WHERE id=?", new Object[] {editView.getText(), rowid});
+                                            placesDb.execSQL("UPDATE bookmarks SET title=? WHERE id=?", new Object[]{editView.getText(), rowid});
                                         })
                                         .setNegativeButton("Cancel", (renameDlg, which1) -> {
                                         })
@@ -990,7 +1000,7 @@ public class MainActivity extends Activity {
                                         .setTitle("Change bookmark URL")
                                         .setView(editView)
                                         .setPositiveButton("Change URL", (renameDlg, which1) -> {
-                                            placesDb.execSQL("UPDATE bookmarks SET url=? WHERE id=?", new Object[] {editView.getText(), rowid});
+                                            placesDb.execSQL("UPDATE bookmarks SET url=? WHERE id=?", new Object[]{editView.getText(), rowid});
                                         })
                                         .setNegativeButton("Cancel", (renameDlg, which1) -> {
                                         })
@@ -998,7 +1008,7 @@ public class MainActivity extends Activity {
                                 break;
                             }
                             case 2:
-                                placesDb.execSQL("DELETE FROM bookmarks WHERE id = ?", new Object[] {rowid});
+                                placesDb.execSQL("DELETE FROM bookmarks WHERE id = ?", new Object[]{rowid});
                                 break;
                         }
                     })
@@ -1021,7 +1031,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Export bookmarks error")
                     .setMessage("Can't open bookmarks database")
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         }
@@ -1035,7 +1046,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Export bookmarks")
                     .setMessage("The file bookmarks.html already exists on SD card. Overwrite?")
-                    .setNegativeButton("Cancel", (dialog, which) -> {})
+                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    })
                     .setPositiveButton("Overwrite", (dialog, which) -> {
                         //noinspection ResultOfMethodCallIgnored
                         file.delete();
@@ -1072,7 +1084,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Export bookmarks error")
                     .setMessage(e.toString())
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
         }
     }
@@ -1083,7 +1096,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Import bookmarks error")
                     .setMessage("Can't open bookmarks database")
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         }
@@ -1095,7 +1109,7 @@ public class MainActivity extends Activity {
         File file = new File(Environment.getExternalStorageDirectory(), "bookmarks.html");
         StringBuilder sb = new StringBuilder();
         try {
-            char[] buf = new char[16*1024];
+            char[] buf = new char[16 * 1024];
             FileInputStream fis = new FileInputStream(file);
             BufferedReader br = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8));
             int count;
@@ -1107,14 +1121,16 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Import bookmarks error")
                     .setMessage("Bookmarks should be placed in a bookmarks.html file on the SD Card")
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         } catch (IOException e) {
             new AlertDialog.Builder(this)
                     .setTitle("Import bookmarks error")
                     .setMessage(e.toString())
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         }
@@ -1135,7 +1151,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Import bookmarks")
                     .setMessage("No bookmarks found in bookmarks.html")
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         }
@@ -1160,14 +1177,16 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Bookmarks error")
                     .setMessage("Can't open bookmarks database")
-                    .setPositiveButton("OK", (dialog, which) -> {})
+                    .setPositiveButton("OK", (dialog, which) -> {
+                    })
                     .show();
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle("Delete all bookmarks?")
                 .setMessage("This action cannot be undone")
-                .setNegativeButton("Cancel", (dialog, which) -> {})
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                })
                 .setPositiveButton("Delete All", (dialog, which) -> placesDb.execSQL("DELETE FROM bookmarks"))
                 .show();
     }
@@ -1275,9 +1294,13 @@ public class MainActivity extends Activity {
                 new MenuAction("Open URL in app", isNightMode ? R.drawable.open_in_app_white : R.drawable.open_in_app, this::openUrlInApp),
 
                 new MenuAction("Back", isNightMode ? R.drawable.back_white : R.drawable.back,
-                        () -> {if (getCurrentWebView().canGoBack()) getCurrentWebView().goBack();}),
+                        () -> {
+                            if (getCurrentWebView().canGoBack()) getCurrentWebView().goBack();
+                        }),
                 new MenuAction("Forward", isNightMode ? R.drawable.forward_white : R.drawable.forward,
-                        () -> {if (getCurrentWebView().canGoForward()) getCurrentWebView().goForward();}),
+                        () -> {
+                            if (getCurrentWebView().canGoForward()) getCurrentWebView().goForward();
+                        }),
                 new MenuAction("Reload", isNightMode ? R.drawable.reload_white : R.drawable.reload, () -> getCurrentWebView().reload()),
                 new MenuAction("Stop", isNightMode ? R.drawable.stop_white : R.drawable.stop, () -> getCurrentWebView().stopLoading()),
                 new MenuAction("Scroll to top", isNightMode ? R.drawable.top_white : R.drawable.top,
@@ -1286,7 +1309,7 @@ public class MainActivity extends Activity {
                         () -> getCurrentWebView().pageDown(true)),
 
                 new MenuAction("Menu", isNightMode ? R.drawable.menu_white : R.drawable.menu, this::showMenu),
-                new MenuAction("Full menu",  isNightMode ? R.drawable.menu_white : R.drawable.menu, this::showFullMenu),
+                new MenuAction("Full menu", isNightMode ? R.drawable.menu_white : R.drawable.menu, this::showFullMenu),
 
                 new MenuAction("Bookmarks", isNightMode ? R.drawable.bookmarks_white : R.drawable.bookmarks, this::showBookmarks),
                 new MenuAction("Add bookmark", isNightMode ? R.drawable.add_white : R.drawable.add, this::addBookmark),
@@ -1301,7 +1324,7 @@ public class MainActivity extends Activity {
                     newTab("");
                     switchToTab(tabs.size() - 1);
                 }),
-                new MenuAction("Close tab", isNightMode ? R.drawable.close_white : R.drawable.close, this::closeCurrentTab),        };
+                new MenuAction("Close tab", isNightMode ? R.drawable.close_white : R.drawable.close, this::closeCurrentTab),};
 
         setupToolbar(findViewById(R.id.toolbar));
     }
@@ -1395,7 +1418,8 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Open in app")
                     .setMessage("No app can open this URL.")
-                    .setPositiveButton("OK", (dialog1, which1) -> {})
+                    .setPositiveButton("OK", (dialog1, which1) -> {
+                    })
                     .show();
         }
     }
@@ -1497,11 +1521,11 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Permission Required")
                     .setMessage(explanation)
-                    .setPositiveButton("OK", (dialog, which) -> requestPermissions(new String[] {permission}, requestCode))
+                    .setPositiveButton("OK", (dialog, which) -> requestPermissions(new String[]{permission}, requestCode))
                     .show();
             return false;
         }
-        requestPermissions(new String[] {permission}, requestCode);
+        requestPermissions(new String[]{permission}, requestCode);
         return false;
     }
 
