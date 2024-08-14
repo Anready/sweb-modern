@@ -457,7 +457,7 @@ public class MainActivity extends Activity {
                             filename,
                             contentLength / 1024.0 / 1024.0,
                             url))
-                    .setPositiveButton("Download", (dialog, which) -> startDownload(url, filename))
+                    .setPositiveButton("Download", (dialog, which) -> startDownload(url, filename, userAgent, mimetype, contentDisposition))
                     .setNeutralButton("Open", (dialog, which) -> {
                         Intent i = new Intent(Intent.ACTION_VIEW);
                         i.setData(Uri.parse(url));
@@ -530,7 +530,6 @@ public class MainActivity extends Activity {
                             .show();
                     break;
                 case 3:
-                    startDownload(url, null);
                     break;
                 case 4:
                     showLongPressMenu(null, imageUrl);
@@ -564,35 +563,24 @@ public class MainActivity extends Activity {
         return s;
     }
 
-    private void startDownload(String url, String filename) {
+    private void startDownload(String url, String filename, String userAgent, String mimetype, String contentDisposition) {
         if (!PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
 
-        if (filename == null) {
-            filename = URLUtil.guessFileName(url, null, null);
-        }
-        DownloadManager.Request request;
-        try {
-            request = new DownloadManager.Request(Uri.parse(url));
-        } catch (IllegalArgumentException e) {
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Can't Download URL")
-                    .setMessage(url)
-                    .setPositiveButton("OK", (dialog1, which1) -> {
-                    })
-                    .show();
-            return;
-        }
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        request.setMimeType(mimetype);
+        request.addRequestHeader("User-Agent", userAgent);
+        request.setDescription("Downloading file...");
+        request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimetype));
+        request.allowScanningByMediaScanner();
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
-        String cookie = CookieManager.getInstance().getCookie(url);
-        if (cookie != null) {
-            request.addRequestHeader("Cookie", cookie);
-        }
-        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-        assert dm != null;
-        dm.enqueue(request);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
+
+        DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        downloadManager.enqueue(request);
+
+        Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
     }
 
     private void newTabCommon(IncognitoWebView webview) {
