@@ -73,6 +73,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -135,7 +136,6 @@ public class MainActivity extends Activity {
 
     static final int PERMISSION_REQUEST_EXPORT_BOOKMARKS = 1;
     static final int PERMISSION_REQUEST_IMPORT_BOOKMARKS = 2;
-    static final int PERMISSION_REQUEST_DOWNLOAD = 3;
 
     private final ArrayList<Tab> tabs = new ArrayList<>();
     private int currentTabIndex;
@@ -175,6 +175,7 @@ public class MainActivity extends Activity {
             actions.put(title, this);
         }
 
+        @NonNull
         @Override
         public String toString() {
             return title;
@@ -238,7 +239,6 @@ public class MainActivity extends Activity {
         }
         webview.setBackgroundColor(isNightMode ? Color.BLACK : Color.WHITE);
         WebSettings settings = webview.getSettings();
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.SINGLE_COLUMN);
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setJavaScriptEnabled(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -455,7 +455,7 @@ public class MainActivity extends Activity {
                             filename,
                             contentLength / 1024.0 / 1024.0,
                             url))
-                    .setPositiveButton("Download", (dialog, which) -> startDownload(url, filename, userAgent, mimetype, contentDisposition))
+                    .setPositiveButton("Download", (dialog, which) -> startDownload(url, userAgent, mimetype, contentDisposition))
                     .setNeutralButton("Open", (dialog, which) -> {
                         Intent i = new Intent(Intent.ACTION_VIEW);
                         i.setData(Uri.parse(url));
@@ -561,7 +561,7 @@ public class MainActivity extends Activity {
         return s;
     }
 
-    private void startDownload(String url, String filename, String userAgent, String mimetype, String contentDisposition) {
+    private void startDownload(String url, String userAgent, String mimetype, String contentDisposition) {
         if (PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
@@ -631,8 +631,9 @@ public class MainActivity extends Activity {
             private final Thread.UncaughtExceptionHandler defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
 
             @Override
-            public void uncaughtException(Thread t, Throwable e) {
+            public void uncaughtException(@NonNull Thread t, @NonNull Throwable e) {
                 ExceptionLogger.logException(e);
+                assert defaultUEH != null;
                 defaultUEH.uncaughtException(t, e);
             }
         });
@@ -832,9 +833,7 @@ public class MainActivity extends Activity {
                             .setMessage(closedTabs.get(position).title)
                             .setNegativeButton("Cancel", (dlg, which1) -> {
                             })
-                            .setPositiveButton("Remove", (dlg, which1) -> {
-                                closedTabs.remove(position);
-                            })
+                            .setPositiveButton("Remove", (dlg, which1) -> closedTabs.remove(position))
                             .show();
                     return true;
                 });
@@ -971,9 +970,7 @@ public class MainActivity extends Activity {
                                 new AlertDialog.Builder(this)
                                         .setTitle("Rename bookmark")
                                         .setView(editView)
-                                        .setPositiveButton("Rename", (renameDlg, which1) -> {
-                                            placesDb.execSQL("UPDATE bookmarks SET title=? WHERE id=?", new Object[]{editView.getText(), rowid});
-                                        })
+                                        .setPositiveButton("Rename", (renameDlg, which1) -> placesDb.execSQL("UPDATE bookmarks SET title=? WHERE id=?", new Object[]{editView.getText(), rowid}))
                                         .setNegativeButton("Cancel", (renameDlg, which1) -> {
                                         })
                                         .show();
@@ -985,9 +982,7 @@ public class MainActivity extends Activity {
                                 new AlertDialog.Builder(this)
                                         .setTitle("Change bookmark URL")
                                         .setView(editView)
-                                        .setPositiveButton("Change URL", (renameDlg, which1) -> {
-                                            placesDb.execSQL("UPDATE bookmarks SET url=? WHERE id=?", new Object[]{editView.getText(), rowid});
-                                        })
+                                        .setPositiveButton("Change URL", (renameDlg, which1) -> placesDb.execSQL("UPDATE bookmarks SET url=? WHERE id=?", new Object[]{editView.getText(), rowid}))
                                         .setNegativeButton("Cancel", (renameDlg, which1) -> {
                                         })
                                         .show();
@@ -1455,37 +1450,11 @@ public class MainActivity extends Activity {
 
     private void injectCSS(WebView webview) {
         try {
-            String css = "*, :after, :before {background-color: #161a1e !important; color: #61615f !important; border-color: #212a32 !important; background-image:none !important; outline-color: #161a1e !important; z-index: 1 !important} " +
-                    "svg, img {filter: grayscale(100%) brightness(50%) !important; -webkit-filter: grayscale(100%) brightness(50%) !important} " +
-                    "input {background-color: black !important;}" +
-                    "select, option, textarea, button, input {color:#aaa !important; background-color: black !important; border:1px solid #212a32 !important}" +
-                    "a, a * {text-decoration: none !important; color:#32658b !important}" +
-                    "a:visited, a:visited * {color: #783b78 !important}" +
-                    "* {max-width: 100vw !important} pre {white-space: pre-wrap !important}";
-/*
-            String cssDolphin = "*,:before,:after,html *{color:#61615f!important;-webkit-border-image:none!important;border-image:none!important;background:none!important;background-image:none!important;box-shadow:none!important;text-shadow:none!important;border-color:#212a32!important}\n" +
-                    "\n" +
-                    "body{background-color:#000000!important}\n" +
-                    "html a,html a *{text-decoration:none!important;color:#394c65!important}\n" +
-                    "html a:hover,html a:hover *{color:#394c65!important;background:#1b1e23!important}\n" +
-                    "html a:visited,html a:visited *,html a:active,html a:active *{color:#58325b!important}\n" +
-                    "html select,html option,html textarea,html button{color:#aaa!important;border:1px solid #212a32!important;background:#161a1e!important;border-color:#212a32!important;border-style:solid}\n" +
-                    "html select:hover,html option:hover,html button:hover,html textarea:hover,html select:focus,html option:focus,html button:focus,html textarea:focus{color:#bbb!important;background:#161a1e!important;border-color:#777 #999 #999 #777 !important}\n" +
-                    "html input,html input[type=text],html input[type=search],html input[type=password]{color:#4e4e4e!important;background-color:#161a1e!important;box-shadow:1px 0 4px rgba(16,18,23,.75) inset,0 1px 4px rgba(16,18,23,.75) inset!important;border-color:#1a1c27!important;border-style:solid!important}\n" +
-                    "html input:focus,html input[type=text]:focus,html input[type=search]:focus,html input[type=password]:focus{color:#bbb!important;outline:none!important;background:#161a1e!important;border-color:#1a3973}\n" +
-                    "html input:hover,html select:hover,html option:hover,html button:hover,html textarea:hover,html input:focus,html select:focus,html option:focus,html button:focus,html textarea:focus{color:#bbb!important;background:#093681!important;opacity:0.4!important;border-color:#777 #999 #999 #777 !important}\n" +
-                    "html input[type=button],html input[type=submit],html input[type=reset],html input[type=image]{color:#4e4e4e!important;border-color:#888 #666 #666 #888 !important}\n" +
-                    "html input[type=button],html input[type=submit],html input[type=reset]{border:1px solid #212a32!important;background-image:0 color-stop(1,#181a23))!important}\n" +
-                    "html input[type=button]:hover,html input[type=submit]:hover,html input[type=reset]:hover,html input[type=image]:hover{border-color:#777 #999 #999 #777 !important}\n" +
-                    "html input[type=button]:hover,html input[type=submit]:hover,html input[type=reset]:hover{border:1px solid #666!important;background-image:0 color-stop(1,#262939))!important}\n" +
-                    "html img,html svg{opacity:.5!important;border-color:#111!important}\n" +
-                    "html ::-webkit-input-placeholder{color:#4e4e4e!important}\n";
-*/
             if (!getCurrentTab().isDesktopUA) {
                 webview.evaluateJavascript("javascript:document.querySelector('meta[name=viewport]').content='width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=1';", null);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("injectCSS", e.toString());
         }
     }
 
@@ -1627,8 +1596,9 @@ public class MainActivity extends Activity {
             View view = super.getView(position, convertView, parent);
             TextView textView = view.findViewById(android.R.id.text1);
             int icon = position == currentIndex ? android.R.drawable.ic_menu_mylocation : R.drawable.empty;
-            Drawable d = getContext().getResources().getDrawable(icon, null);
+            Drawable d = ResourcesCompat.getDrawable(getContext().getResources(), icon, getContext().getTheme());
             int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getContext().getResources().getDisplayMetrics());
+            assert d != null;
             d.setBounds(0, 0, size, size);
             textView.setCompoundDrawablesRelative(d, null, null, null);
             textView.setCompoundDrawablePadding(
@@ -1653,15 +1623,17 @@ public class MainActivity extends Activity {
             MenuAction item = getItem(position);
             assert item != null;
 
-            Drawable left = getContext().getResources().getDrawable(item.icon != 0 ? item.icon : R.drawable.empty, null);
+            Drawable left = ResourcesCompat.getDrawable(getContext().getResources(), item.icon != 0 ? item.icon : R.drawable.empty, null);
             int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, m);
+            assert left != null;
             left.setBounds(0, 0, size, size);
             left.setTint(Color.WHITE);
             Drawable right = null;
             if (item.getState != null) {
                 int icon = item.getState.getAsBoolean() ? android.R.drawable.checkbox_on_background :
                         android.R.drawable.checkbox_off_background;
-                right = getContext().getResources().getDrawable(icon, null);
+                right = ResourcesCompat.getDrawable(getContext().getResources(), icon, null);
+                assert right != null;
                 right.setBounds(0, 0, size, size);
             }
 
@@ -1715,8 +1687,8 @@ public class MainActivity extends Activity {
             TextView v = convertView.findViewById(R.id.text1);
             v.setText(completions.get(position));
 
-            Drawable d = mContext.getResources().getDrawable(R.drawable.commit_search, null);
-            Drawable s = mContext.getResources().getDrawable(R.drawable.url_bar_white, null);
+            Drawable d = ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.commit_search, null);
+            Drawable s = ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.url_bar_white, null);
 
             int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 32, mContext.getResources().getDisplayMetrics());
             d.setBounds(0, 0, size, size);
