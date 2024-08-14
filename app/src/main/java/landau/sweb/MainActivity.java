@@ -1,6 +1,5 @@
 package landau.sweb;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -27,7 +26,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.net.http.SslCertificate;
 import android.net.http.SslError;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -564,7 +562,7 @@ public class MainActivity extends Activity {
     }
 
     private void startDownload(String url, String filename, String userAgent, String mimetype, String contentDisposition) {
-        if (!PermissionHelper.hasOrRequestPermission(this, 1)) {
+        if (PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
 
@@ -1024,9 +1022,7 @@ public class MainActivity extends Activity {
                     .show();
             return;
         }
-        if (!hasOrRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                null,
-                PERMISSION_REQUEST_EXPORT_BOOKMARKS)) {
+        if (PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
         File file = new File(Environment.getExternalStorageDirectory(), "bookmarks.html");
@@ -1089,9 +1085,7 @@ public class MainActivity extends Activity {
                     .show();
             return;
         }
-        if (!hasOrRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-                null,
-                PERMISSION_REQUEST_IMPORT_BOOKMARKS)) {
+        if (PermissionHelper.hasOrRequestPermission(this, 1)) {
             return;
         }
         File file = new File(Environment.getExternalStorageDirectory(), "bookmarks.html");
@@ -1242,7 +1236,6 @@ public class MainActivity extends Activity {
             int textColor = Color.WHITE;
             int backgroundColor = Color.BLACK;
             et.setTextColor(textColor);
-            //et.setBackgroundColor(backgroundColor);
             searchEdit.setTextColor(textColor);
             searchEdit.setBackgroundColor(backgroundColor);
             searchCount.setTextColor(textColor);
@@ -1254,8 +1247,7 @@ public class MainActivity extends Activity {
         } else {
             int textColor = Color.BLACK;
             int backgroundColor = Color.WHITE;
-            //et.setTextColor(textColor);
-            //et.setBackgroundColor(backgroundColor);
+            et.setTextColor(backgroundColor);
             searchEdit.setTextColor(textColor);
             searchEdit.setBackgroundColor(backgroundColor);
             searchCount.setTextColor(textColor);
@@ -1495,26 +1487,6 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    boolean hasOrRequestPermission(String permission, String explanation, int requestCode) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true;
-        }
-        if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
-            // Permission already granted
-            return true;
-        }
-        if (explanation != null && shouldShowRequestPermissionRationale(permission)) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Permission Required")
-                    .setMessage(explanation)
-                    .setPositiveButton("OK", (dialog, which) -> requestPermissions(new String[]{permission}, requestCode))
-                    .show();
-            return false;
-        }
-        requestPermissions(new String[]{permission}, requestCode);
-        return false;
     }
 
     @Override
