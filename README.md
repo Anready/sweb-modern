@@ -13,7 +13,7 @@ Other features:
 - Use a desktop user-agent
 
 ### Download
-Download SWeb.apk from the [Releases](https://github.com/alandau/sweb/releases/latest) page.
+Download SWeb.apk from the [Releases](https://github.com/Anready/sweb-modern/releases/latest) page.
 
 ### License
 MIT
