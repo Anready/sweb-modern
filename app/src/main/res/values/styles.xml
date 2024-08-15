@@ -12,5 +12,6 @@
         <item name="colorOnBackground">@color/colorOnBackground</item>
         <item name="colorSurface">@color/colorSurface</item>
         <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="android:statusBarColor">@color/black</item>
     </style>
 </resources>
